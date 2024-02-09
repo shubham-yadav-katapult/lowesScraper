@@ -8,7 +8,7 @@ import time
 from lxml import etree
 import json
 import pandas as pd
-
+import validators
 import concurrent.futures
 import time
 
@@ -398,12 +398,11 @@ sub_d_links = """/pl/Accessible-bathroom-Accessible-home/37721669146437
 /c/Windows-Windows-doors""".splitlines()
 
 sub_d_links = ["https://www.lowes.com"+i for i in sub_d_links]
-print(len(sub_d_links))
 # dep_xp = '//*[@aria-label="departments"]/parent::div/div//@href'
 
-class Scraper():
+class Scraper:
     #Initialising Scraper
-    def __init__(self):
+    def __init__(self,outputLocation):
         self.robot = '//*[contains(text(),"To proceed, please verify that you are not a robot.")]'
         options = Options()
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -423,36 +422,73 @@ class Scraper():
             # desired_capabilities=DesiredCapabilities.CHROME,
             options=options,
         )
+        self.outputLocation = outputLocation
 
     def iterate(self,link):
         self.driver.get(link)
         dep_xp = '//*[@aria-label="departments"]/parent::div/div/ul/li/a'
         sublinks = self.driver.find_elements(By.XPATH,dep_xp)
         sublinks = [i.get_attribute("href") for i in sublinks]
-        print(sublinks)
+        #print(sublinks)
         if len(sublinks) == 0:
-            print("sublinks == 0")
+            #print("sublinks == 0")
             page_source = self.driver.page_source
             # Parse the page source using lxml etree
             tree = etree.HTML(page_source)
-            dep_xp = '(//*[@class="GridStyles__GridRow-sc-1ejksnu-1 qwBjG row sc-98d7ri_engage-common-3 jaXDpy"])[1]//@href'
-            # sublinks = self.driver.find_elements(By.XPATH,dep_xp)
-            sublinks = tree.xpath(dep_xp)
-            sublinks = ["https://www.lowes.com"+i for i in sublinks]
+            dep_xp = '(//*[@class="GridStyles__GridRow-sc-1ejksnu-1 qwBjG row sc-98d7ri_engage-common-3 jaXDpy"])[1]//div/a'
+            sublinks = self.driver.find_elements(By.XPATH,dep_xp)
+            sublinks = [i.get_attribute("href") for i in sublinks]
+            print(sublinks)
         if len(sublinks) > 0:
             for i in sublinks:
-                self.iterate(i)
+                print(i)
+                print("https://www.lowes.com/" in i)
+                if "https://www.lowes.com/" in i:
+                    self.iterate(i)
+                else:
+                      with open("wrongUrls.txt","a") as fl:
+                        fl.write(i)
+                        fl.write("\n")
         else:
-            with open("lastlinks.txt","a") as fl:
+            with open(self.outputLocation,"a") as fl:
                 fl.write(self.driver.current_url)
                 fl.write("\n")
                 fl.close()
 
 
-scraper = Scraper()
-for i in sub_d_links[:]:
-    scraper.iterate(i)
-    with open("loop1Last.txt","a") as fl:
-        fl.write(i)
-        fl.write("\n")
-        fl.close()
+
+import concurrent.futures
+
+def scrape1():
+    scraper = Scraper("dump1.txt")
+    for i in sub_d_links[:len(sub_d_links)//3]:
+        scraper.iterate(i)
+        with open("loopLast1.txt", "a") as fl:
+            fl.write(i)
+            fl.write("\n")
+
+def scrape2():
+    scraper = Scraper("dump2.txt")
+    for i in sub_d_links[len(sub_d_links)//3:2*len(sub_d_links)//3]:
+        scraper.iterate(i)
+        with open("loopLast2.txt", "a") as fl:
+            fl.write(i)
+            fl.write("\n")
+
+def scrape3():
+    scraper = Scraper("dump3.txt")
+    for i in sub_d_links[2*len(sub_d_links)//3:]:
+        scraper.iterate(i)
+        with open("loopLast3.txt", "a") as fl:
+            fl.write(i)
+            fl.write("\n")
+
+# Create a ThreadPoolExecutor with 3 worker threads
+with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+    # Submit the scrape functions to the executor
+    future1 = executor.submit(scrape1)
+    future2 = executor.submit(scrape2)
+    future3 = executor.submit(scrape3)
+    
+    # Wait for all scrape functions to complete
+    concurrent.futures.wait([future1, future2, future3])
