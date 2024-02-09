@@ -8,7 +8,6 @@ import time
 from lxml import etree
 import json
 import pandas as pd
-import validators
 import concurrent.futures
 import time
 
