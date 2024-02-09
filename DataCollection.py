@@ -9,7 +9,6 @@ from lxml import etree
 import json
 import pandas as pd
 import concurrent.futures
-import time
 
 sub_d_links = """/pl/Accessible-bathroom-Accessible-home/37721669146437
 /pl/Accessible-bedroom-Accessible-home/4294644781
